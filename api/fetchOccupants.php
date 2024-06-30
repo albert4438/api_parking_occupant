@@ -14,10 +14,11 @@ include "connection.php";
 
 try {
     $stmt = $conn->prepare("
-        SELECT p.Firstname, p.Lastname, p.Phonenumber
-FROM tbloccupant o
-        INNER JOIN tblprofile p ON o.Profile_ID = p.Profile_ID
-    ");
+    SELECT o.Occupant_ID, p.Firstname, p.Lastname, p.Phonenumber
+    FROM tbloccupant o
+    INNER JOIN tblprofile p ON o.Profile_ID = p.Profile_ID
+");
+
     $stmt->execute();
     
     $occupants = $stmt->fetchAll(PDO::FETCH_ASSOC);
