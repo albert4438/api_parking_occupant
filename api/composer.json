@@ -1,5 +1,11 @@
 {
     "require": {
-        "symfony/http-foundation": "^7.1"
+        "symfony/http-foundation": "^7.1",
+        "endroid/qr-code-bundle": "^4.3"
+    },
+    "config": {
+        "allow-plugins": {
+            "endroid/installer": true
+        }
     }
 }
