@@ -19,14 +19,17 @@ $occupantId = isset($_GET['id'])? intval($_GET['id']) : 0;
 
 if ($occupantId > 0) {
     $stmt = $conn->prepare("SELECT 
+                            v.Vehicle_ID,
                             v.Vehicle_type, 
                             v.Vehicle_color, 
                             v.Vehicle_platenumber, 
                             v.Vehicle_model, 
-                            v.Vehicle_brand 
+                            v.Vehicle_brand,
+                            ov.Occupant_ID 
                             FROM tbloccupantvehicle ov
                             JOIN tblvehicle v ON ov.Vehicle_ID = v.Vehicle_ID
                             WHERE ov.Occupant_ID =?");
+
     $stmt->execute([$occupantId]);
     $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
