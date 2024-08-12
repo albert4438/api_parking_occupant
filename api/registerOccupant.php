@@ -1,75 +1,54 @@
 <?php
-// Set up CORS headers to allow requests from any origin
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Accept, Origin, X-Requested-With");
 
-// Include database connection
 include "connection.php";
 
-// Handle OPTIONS request (preflight request)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     header("HTTP/1.1 200 OK");
     exit();
 }
 
-// Handle POST request
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Get POST data
     $data = json_decode(file_get_contents("php://input"), true);
 
-    // Validate incoming data
     if (validateData($data)) {
-        // Sanitize data
         $sanitizedData = sanitizeData($data);
 
+        if (!validateImage($sanitizedData['image'])) {
+            http_response_code(400);
+            echo json_encode(array('error' => 'Invalid image format or size.'));
+            exit();
+        }
+
         try {
-            // Begin transaction
             $conn->beginTransaction();
-
-            // Insert into tblprofile
             $profileId = insertIntoTblprofile($conn, $sanitizedData);
-
-            // Insert into tbloccupant
             $occupantId = insertIntoTbloccupant($conn, $profileId, $sanitizedData);
-
-            // Retrieve Role_ID based on role name
             $roleId = getRoleId($conn, $sanitizedData['role']);
 
-            // Insert into tblpersonnel for Admin/Guard
             if ($roleId && isAdminOrGuard($sanitizedData['role'])) {
                 insertIntoTblpersonnel($conn, $profileId, $roleId, $sanitizedData, $occupantId);
             }
 
-            // Commit transaction
             $conn->commit();
-
-            // Return success response
-            http_response_code(201); // Created
+            http_response_code(201);
             echo json_encode(array('success' => true, 'message' => 'Registration successful'));
         } catch (PDOException $e) {
-            // Rollback transaction on error
             $conn->rollBack();
-
-            // Log detailed error message
             error_log('PDOException - '. $e->getMessage());
-
-            // Return error response
-            http_response_code(500); // Internal Server Error
+            http_response_code(500);
             echo json_encode(array('error' => 'Registration failed: '. $e->getMessage()));
         }
     } else {
-        // Return bad request response if required fields are missing
-        http_response_code(400); // Bad Request
+        http_response_code(400);
         echo json_encode(array('error' => 'Incomplete data provided'));
     }
 } else {
-    // Return method not allowed if not POST
-    http_response_code(405); // Method Not Allowed
+    http_response_code(405);
     echo json_encode(array('error' => 'Invalid request method'));
 }
-
-// Helper functions
 
 function validateData($data) {
     return isset($data['role']) &&
@@ -77,32 +56,45 @@ function validateData($data) {
            isset($data['lastName']) &&
            isset($data['birthdate']) &&
            isset($data['address']) &&
-           isset($data['username']) &&
-           isset($data['password']) &&
-           isset($data['jobTitle']) &&
-           isset($data['status']);
+           isset($data['phonenumber']) &&
+           isset($data['image']) &&
+           (isAdminOrGuard($data['role']) ?
+               isset($data['username']) && 
+               isset($data['password']) && 
+               isset($data['jobTitle']) && 
+               isset($data['status']) 
+               : true);
 }
 
 function sanitizeData($data) {
     return [
         'role' => htmlspecialchars(strip_tags($data['role'])),
         'firstName' => htmlspecialchars(strip_tags($data['firstName'])),
-        'middleName' => isset($data['middleName'])? htmlspecialchars(strip_tags($data['middleName'])) : null,
+        'middleName' => isset($data['middleName']) ? htmlspecialchars(strip_tags($data['middleName'])) : null,
         'lastName' => htmlspecialchars(strip_tags($data['lastName'])),
         'birthdate' => htmlspecialchars(strip_tags($data['birthdate'])),
         'address' => htmlspecialchars(strip_tags($data['address'])),
-        'username' => htmlspecialchars(strip_tags($data['username'])),
-        'password' => htmlspecialchars(strip_tags($data['password'])),
-        'jobTitle' => htmlspecialchars(strip_tags($data['jobTitle'])),
-        'status' => htmlspecialchars(strip_tags($data['status'])),
-        'phonenumber' => isset($data['phonenumber'])? htmlspecialchars(strip_tags($data['phonenumber'])) : null,
+        'phonenumber' => htmlspecialchars(strip_tags($data['phonenumber'])),
+        'image' => $data['image'], // No longer decode the image here
+        'username' => isset($data['username']) ? htmlspecialchars(strip_tags($data['username'])) : null,
+        'password' => isset($data['password']) ? htmlspecialchars(strip_tags($data['password'])) : null,
+        'jobTitle' => isset($data['jobTitle']) ? htmlspecialchars(strip_tags($data['jobTitle'])) : null,
+        'status' => isset($data['status']) ? htmlspecialchars(strip_tags($data['status'])) : null,
     ];
+}
+
+function validateImage($imageData) {
+    $imageInfo = getimagesizefromstring(base64_decode($imageData));
+    $validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    $maxSize = 5 * 1024 * 1024; // 5MB
+
+    return $imageInfo && in_array($imageInfo['mime'], $validTypes) && strlen(base64_decode($imageData)) <= $maxSize;
 }
 
 function insertIntoTblprofile($conn, $data) {
     $stmt = $conn->prepare("
-        INSERT INTO tblprofile (Firstname, Middlename, Lastname, Birthdate, Address, Phonenumber)
-        VALUES (:firstName, :middleName, :lastName, :birthdate, :address, :phonenumber)
+        INSERT INTO tblprofile (Firstname, Middlename, Lastname, Birthdate, Address, Phonenumber, ProfilePicture)
+        VALUES (:firstName, :middleName, :lastName, :birthdate, :address, :phonenumber, :profilePicture)
     ");
     $stmt->bindParam(':firstName', $data['firstName']);
     $stmt->bindParam(':middleName', $data['middleName']);
@@ -110,6 +102,7 @@ function insertIntoTblprofile($conn, $data) {
     $stmt->bindParam(':birthdate', $data['birthdate']);
     $stmt->bindParam(':address', $data['address']);
     $stmt->bindParam(':phonenumber', $data['phonenumber']);
+    $stmt->bindParam(':profilePicture', base64_decode($data['image']), PDO::PARAM_LOB); // Decode the base64 encoded image
     $stmt->execute();
     return $conn->lastInsertId();
 }
@@ -133,10 +126,10 @@ function getRoleId($conn, $role) {
 }
 
 function isAdminOrGuard($role) {
-    return $role === 'Admin' || $role === 'Guard';
+    return $role === 'Administrator' || $role === 'Security Guard';
 }
 
-function insertIntoTblpersonnel($conn, $profileId, $roleId, $data) {
+function insertIntoTblpersonnel($conn, $profileId, $roleId, $data, $occupantId) {
     $stmt = $conn->prepare("
         INSERT INTO tblpersonnel (Profile_ID, Role_ID, usr_username, usr_password, jobTitle, Status)
         VALUES (:profileId, :roleId, :username, :password, :jobTitle, :status)
@@ -149,5 +142,4 @@ function insertIntoTblpersonnel($conn, $profileId, $roleId, $data) {
     $stmt->bindParam(':status', $data['status']);
     $stmt->execute();
 }
-
 ?>

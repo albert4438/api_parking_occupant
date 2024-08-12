@@ -33,6 +33,13 @@ if ($occupantId > 0) {
         $stmt->execute([$profileId]);
         $profileResult = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        // Check if the profile picture exists
+        $profilePictureUrl = '';
+        if ($profileResult['profilePicture']) {
+            $profilePictureBase64 = base64_encode($profileResult['profilePicture']);
+            $profilePictureUrl = 'data:image/jpeg;base64,' . $profilePictureBase64;
+        }
+
         $response = [
             'profile' => [
                 'Firstname' => $profileResult['Firstname'],
@@ -40,7 +47,8 @@ if ($occupantId > 0) {
                 'Lastname' => $profileResult['Lastname'],
                 'Birthdate' => $profileResult['Birthdate'],
                 'Address' => $profileResult['Address'],
-                'Phonenumber' => $profileResult['Phonenumber']
+                'Phonenumber' => $profileResult['Phonenumber'],
+                'ProfilePicture' => $profilePictureUrl
             ]
         ];
 
