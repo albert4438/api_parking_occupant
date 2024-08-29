@@ -26,15 +26,16 @@ try {
 
             // Retrieve occupant, vehicle, and profile information
             $stmt = $conn->prepare("
-                SELECT o.Occupant_ID, p.Firstname, p.Lastname, p.Phonenumber, p.Address, 
-                       v.Vehicle_Type, v.Vehicle_Color, v.Vehicle_Platenumber, v.Vehicle_Model, v.Vehicle_Brand,
-                       p.profilePicture
+                SELECT o.Occupant_ID AS occupantId, v.Vehicle_ID AS vehicleId, p.Firstname, p.Lastname, p.Phonenumber, p.Address, 
+                    v.Vehicle_Type, v.Vehicle_Color, v.Vehicle_Platenumber, v.Vehicle_Model, v.Vehicle_Brand,
+                    p.profilePicture
                 FROM tbloccupant o
                 INNER JOIN tbloccupantvehicle ov ON o.Occupant_ID = ov.Occupant_ID
                 INNER JOIN tblvehicle v ON ov.Vehicle_ID = v.Vehicle_ID
                 INNER JOIN tblprofile p ON o.Profile_ID = p.Profile_ID
                 WHERE o.Occupant_ID = :occupantId AND v.Vehicle_ID = :vehicleId
             ");
+        
             $stmt->bindParam(':occupantId', $occupantId);
             $stmt->bindParam(':vehicleId', $vehicleId);
             $stmt->execute();
