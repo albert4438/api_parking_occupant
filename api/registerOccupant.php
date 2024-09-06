@@ -51,35 +51,65 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 function validateData($data) {
+    // Add validation for `region_name` instead of `region`
     return isset($data['role']) &&
            isset($data['firstName']) &&
            isset($data['lastName']) &&
            isset($data['birthdate']) &&
-           isset($data['address']) &&
+           isset($data['region_name']) && // Validate that `region_name` is present
+           isset($data['province']) &&
+           isset($data['municipality']) &&
+           isset($data['barangay']) &&
            isset($data['phonenumber']) &&
            isset($data['image']) &&
            (isAdminOrGuard($data['role']) ?
                isset($data['username']) && 
-               isset($data['password']) && 
-               isset($data['jobTitle']) && 
-               isset($data['status']) 
-               : true);
+               isset($data['password']) :
+               true); // username and password only required for specific roles
 }
 
 function sanitizeData($data) {
+    // Ensure the region name is in uppercase to maintain consistency
+    $regionName = strtoupper($data['region_name']); 
+
+    // Format the province, municipality, and barangay names to have capitalized words and spaces instead of dashes
+    $province = implode(' ', array_map('ucwords', explode('-', strtolower($data['province']))));
+    $municipality = implode(' ', array_map('ucwords', explode('-', strtolower($data['municipality']))));
+    $barangay = implode(' ', array_map('ucwords', explode('-', strtolower($data['barangay']))));
+    
+    // Capitalize the words inside parentheses in the province, municipality, and barangay names
+    $province = preg_replace_callback('/\((.*?)\)/', function($match) {
+        return '(' . implode(' ', array_map('ucwords', explode(' ', strtolower($match[1])))) . ')';
+    }, $province);
+    
+    $municipality = preg_replace_callback('/\((.*?)\)/', function($match) {
+        return '(' . implode(' ', array_map('ucwords', explode(' ', strtolower($match[1])))) . ')';
+    }, $municipality);
+    
+    $barangay = preg_replace_callback('/\((.*?)\)/', function($match) {
+        return '(' . implode(' ', array_map('ucwords', explode(' ', strtolower($match[1])))) . ')';
+    }, $barangay);
+    
+    // Construct the full address by combining the region, province, municipality, and barangay names
+    $fullAddress = $regionName . ', ' . $province . ', ' . $municipality . ', ' . $barangay;
+    
+    // Capitalize the first letter of each word in the full address
+    $formattedAddress = ucwords($fullAddress); 
+    
+    // Return the sanitized data in a formatted array
     return [
-        'role' => htmlspecialchars(strip_tags($data['role'])),
-        'firstName' => htmlspecialchars(strip_tags($data['firstName'])),
-        'middleName' => isset($data['middleName']) ? htmlspecialchars(strip_tags($data['middleName'])) : null,
-        'lastName' => htmlspecialchars(strip_tags($data['lastName'])),
-        'birthdate' => htmlspecialchars(strip_tags($data['birthdate'])),
-        'address' => htmlspecialchars(strip_tags($data['address'])),
-        'phonenumber' => htmlspecialchars(strip_tags($data['phonenumber'])),
-        'image' => $data['image'], // No longer decode the image here
-        'username' => isset($data['username']) ? htmlspecialchars(strip_tags($data['username'])) : null,
-        'password' => isset($data['password']) ? htmlspecialchars(strip_tags($data['password'])) : null,
-        'jobTitle' => isset($data['jobTitle']) ? htmlspecialchars(strip_tags($data['jobTitle'])) : null,
-        'status' => isset($data['status']) ? htmlspecialchars(strip_tags($data['status'])) : null,
+        'role' => htmlspecialchars(strip_tags($data['role'])), // Remove HTML tags and special characters from the role
+        'firstName' => htmlspecialchars(strip_tags($data['firstName'])), // Remove HTML tags and special characters from the first name
+        'middleName' => isset($data['middleName']) ? htmlspecialchars(strip_tags($data['middleName'])) : null, // Remove HTML tags and special characters from the middle name if it exists
+        'lastName' => htmlspecialchars(strip_tags($data['lastName'])), // Remove HTML tags and special characters from the last name
+        'birthdate' => htmlspecialchars(strip_tags($data['birthdate'])), // Remove HTML tags and special characters from the birthdate
+        'address' => $formattedAddress, // Use the formatted address with capitalized words
+        'phonenumber' => htmlspecialchars(strip_tags($data['phonenumber'])), // Remove HTML tags and special characters from the phone number
+        'image' => $data['image'], // Keep the image data as is
+        'username' => isset($data['username']) ? htmlspecialchars(strip_tags($data['username'])) : null, // Remove HTML tags and special characters from the username if it exists
+        'password' => isset($data['password']) ? htmlspecialchars(strip_tags($data['password'])) : null, // Remove HTML tags and special characters from the password if it exists
+        'jobTitle' => isset($data['jobTitle']) ? htmlspecialchars(strip_tags($data['jobTitle'])) : null, // Remove HTML tags and special characters from the job title if it exists
+        'status' => isset($data['status']) ? htmlspecialchars(strip_tags($data['status'])) : null, // Remove HTML tags and special characters from the status if it exists
     ];
 }
 
