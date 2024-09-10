@@ -19,8 +19,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $password = $data['password'];
 
         try {
-            // Modified SQL to include Firstname, Lastname, ProfilePicture, and jobTitle from tblProfile
-            $sql = "SELECT p.usr_username, pr.Firstname, pr.Lastname, pr.ProfilePicture, p.jobTitle
+            // Modified SQL to include Personnel_ID and other necessary fields
+            $sql = "SELECT p.Personnel_ID, p.usr_username, pr.Firstname, pr.Lastname, pr.ProfilePicture, p.jobTitle
                     FROM tblpersonnel p 
                     JOIN tblProfile pr ON p.Profile_ID = pr.Profile_ID 
                     WHERE p.usr_username = :username AND p.usr_password = :password";
