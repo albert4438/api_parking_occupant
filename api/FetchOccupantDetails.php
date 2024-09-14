@@ -40,6 +40,14 @@ if ($occupantId > 0) {
             $profilePictureUrl = 'data:image/jpeg;base64,' . $profilePictureBase64;
         }
 
+        // Parse the address back into region, province, municipality, and barangay
+        $addressParts = explode(',', $profileResult['Address']);
+        $region = trim($addressParts[0] ?? '');
+        $province = trim($addressParts[1] ?? '');
+        $municipality = trim($addressParts[2] ?? '');
+        $barangay = trim($addressParts[3] ?? '');
+        
+
         $response = [
             'profile' => [
                 'Firstname' => $profileResult['Firstname'],
@@ -48,7 +56,11 @@ if ($occupantId > 0) {
                 'Birthdate' => $profileResult['Birthdate'],
                 'Address' => $profileResult['Address'],
                 'Phonenumber' => $profileResult['Phonenumber'],
-                'ProfilePicture' => $profilePictureUrl
+                'ProfilePicture' => $profilePictureUrl,
+                'Region' => $region,                // Added Region
+                'Province' => $province,            // Added Province
+                'Municipality' => $municipality,    // Added Municipality
+                'Barangay' => $barangay             // Added Barangay
             ]
         ];
 
