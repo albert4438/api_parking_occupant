@@ -19,7 +19,7 @@ $startDate = isset($_GET['startDate']) ? $_GET['startDate'] : null;
 $endDate = isset($_GET['endDate']) ? $_GET['endDate'] : null;
 
 try {
-    // Base query
+    // Updated query to fetch parking lot information
     $query = "
         SELECT 
             pl.log_id,
@@ -28,6 +28,7 @@ try {
             CONCAT(pfOccupant.Firstname, ' ', pfOccupant.Middlename, ' ', pfOccupant.Lastname) AS occupant_fullname,
             pl.action_type,
             pl.timestamp,
+            lot.Parking_Lot_Name AS parking_lot_name, -- Fetch parking lot name
             v.Vehicle_Type AS vehicle_type,
             v.Vehicle_Brand AS vehicle_brand,
             v.Vehicle_Model AS vehicle_model
@@ -37,6 +38,7 @@ try {
         JOIN tblvehicle v ON pl.Vehicle_ID = v.Vehicle_ID
         JOIN tbloccupant oc ON pl.Occupant_ID = oc.Occupant_ID
         JOIN tblprofile pfOccupant ON oc.Profile_ID = pfOccupant.Profile_ID
+        JOIN tblparkinglot lot ON pl.Parking_lot_ID = lot.Parking_lot_ID -- Join with parking lot table
         WHERE 1 = 1
     ";
 
@@ -91,4 +93,3 @@ try {
     http_response_code(500);
     echo json_encode(array('error' => 'Database error: '. $e->getMessage()));
 }
-?>

@@ -50,6 +50,7 @@ if ($occupantId > 0) {
 
         $response = [
             'profile' => [
+                'Profile_ID' => $profileId, // Added Profile_ID
                 'Firstname' => $profileResult['Firstname'],
                 'Middlename' => $profileResult['Middlename'],
                 'Lastname' => $profileResult['Lastname'],
@@ -73,6 +74,7 @@ if ($occupantId > 0) {
 
         if ($personnelResult) {
             $response['personnel'] = [
+                'Personnel_ID' => $personnelResult['Personnel_ID'], // Added Personnel_ID
                 'Role_ID' => $personnelResult['Role_ID'],
                 'usr_username' => $personnelResult['usr_username'],
                 'usr_password' => $personnelResult['usr_password'],
