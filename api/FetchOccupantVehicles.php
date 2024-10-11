@@ -18,6 +18,7 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
 $occupantId = isset($_GET['id'])? intval($_GET['id']) : 0;
 
 if ($occupantId > 0) {
+    // Modified SQL to include QR_Status from tbloccupantvehicle
     $stmt = $conn->prepare("SELECT 
                             v.Vehicle_ID,
                             v.Vehicle_type, 
@@ -25,10 +26,11 @@ if ($occupantId > 0) {
                             v.Vehicle_platenumber, 
                             v.Vehicle_model, 
                             v.Vehicle_brand,
-                            ov.Occupant_ID 
+                            ov.Occupant_ID,
+                            ov.QR_Status  -- Include the QR_Status column
                             FROM tbloccupantvehicle ov
                             JOIN tblvehicle v ON ov.Vehicle_ID = v.Vehicle_ID
-                            WHERE ov.Occupant_ID =?");
+                            WHERE ov.Occupant_ID = ?");
 
     $stmt->execute([$occupantId]);
     $result = $stmt->fetchAll(PDO::FETCH_ASSOC);

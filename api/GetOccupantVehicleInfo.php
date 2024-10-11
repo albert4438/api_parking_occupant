@@ -24,11 +24,11 @@ try {
             // Begin transaction
             $conn->beginTransaction();
 
-            // Retrieve occupant, vehicle, and profile information
+            // Retrieve occupant, vehicle, profile, and QR status information
             $stmt = $conn->prepare("
                 SELECT o.Occupant_ID AS occupantId, v.Vehicle_ID AS vehicleId, p.Firstname, p.Lastname, p.Phonenumber, p.Address, 
                     v.Vehicle_Type, v.Vehicle_Color, v.Vehicle_Platenumber, v.Vehicle_Model, v.Vehicle_Brand,
-                    p.profilePicture
+                    p.profilePicture, ov.QR_Status
                 FROM tbloccupant o
                 INNER JOIN tbloccupantvehicle ov ON o.Occupant_ID = ov.Occupant_ID
                 INNER JOIN tblvehicle v ON ov.Vehicle_ID = v.Vehicle_ID
@@ -43,7 +43,29 @@ try {
             if ($stmt->rowCount() > 0) {
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                // Convert profilePicture to base64
+                // Check QR Status
+                if ($row['QR_Status'] !== 'VALID') {
+                    $conn->rollBack();
+                    echo json_encode([
+                        "status" => "error",
+                        "error_type" => "invalid_status", // This tells the frontend it's an invalid system-generated QR code
+                        "message" => "This QR code is not allowed to park",
+                    ]);
+                    exit();
+                }
+                
+                // If no data is found, handle this case separately
+                if (!$row) {
+                    $conn->rollBack();
+                    echo json_encode([
+                        "status" => "error",
+                        "error_type" => "not_found", // For non-system QR codes or unknown QR codes
+                        "message" => "QR code not recognized",
+                    ]);
+                    exit();
+                }
+
+                // Convert profilePicture to base64 if it exists
                 if ($row['profilePicture'] !== null) {
                     $row['profilePicture'] = base64_encode($row['profilePicture']);
                 }
@@ -59,7 +81,7 @@ try {
                     "data" => $row,
                 ]);
             } else {
-                // Rollback transaction
+                // Rollback transaction if no data found
                 $conn->rollBack();
 
                 echo json_encode([
@@ -80,7 +102,7 @@ try {
         ]);
     }
 } catch (Exception $e) {
-    // Rollback transaction
+    // Rollback transaction on error
     $conn->rollBack();
 
     error_log("Error: " . $e->getMessage());

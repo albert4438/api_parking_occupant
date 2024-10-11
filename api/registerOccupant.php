@@ -22,25 +22,42 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit();
         }
 
-        try {
-            $conn->beginTransaction();
-            $profileId = insertIntoTblprofile($conn, $sanitizedData);
-            $occupantId = insertIntoTbloccupant($conn, $profileId, $sanitizedData);
-            $roleId = getRoleId($conn, $sanitizedData['role']);
-
-            if ($roleId && isAdminOrGuard($sanitizedData['role'])) {
-                insertIntoTblpersonnel($conn, $profileId, $roleId, $sanitizedData, $occupantId);
-            }
-
-            $conn->commit();
-            http_response_code(201);
-            echo json_encode(array('success' => true, 'message' => 'Registration successful'));
-        } catch (PDOException $e) {
-            $conn->rollBack();
-            error_log('PDOException - '. $e->getMessage());
-            http_response_code(500);
-            echo json_encode(array('error' => 'Registration failed: '. $e->getMessage()));
-        }
+        if ($_SERVER["REQUEST_METHOD"] == "POST") {
+            $data = json_decode(file_get_contents("php://input"), true);
+        
+            if (validateData($data)) {
+                $sanitizedData = sanitizeData($data);
+        
+                if (!validateImage($sanitizedData['image'])) {
+                    http_response_code(400);
+                    echo json_encode(array('error' => 'Invalid image format or size.'));
+                    exit();
+                }
+        
+                try {
+                            $conn->beginTransaction();
+                            $profileId = insertIntoTblprofile($conn, $sanitizedData);
+                            $roleId = getRoleId($conn, $sanitizedData['role']); // Get Role_ID
+                            $occupantId = insertIntoTbloccupant($conn, $profileId, $sanitizedData, $roleId); // Pass Role_ID
+                
+                            if ($roleId && isAdminOrGuard($sanitizedData['role'])) {
+                                insertIntoTblpersonnel($conn, $profileId, $roleId, $sanitizedData, $occupantId);
+                            }
+                
+                            $conn->commit();
+                            http_response_code(201);
+                            echo json_encode(array('success' => true, 'message' => 'Registration successful'));
+                        } catch (PDOException $e) {
+                            $conn->rollBack();
+                            error_log('PDOException - '. $e->getMessage());
+                            http_response_code(500);
+                            echo json_encode(array('error' => 'Registration failed: '. $e->getMessage()));
+                        }
+                    } else {
+                        http_response_code(400);
+                        echo json_encode(array('error' => 'Incomplete data provided'));
+                    }
+                }        
     } else {
         http_response_code(400);
         echo json_encode(array('error' => 'Incomplete data provided'));
@@ -137,13 +154,14 @@ function insertIntoTblprofile($conn, $data) {
     return $conn->lastInsertId();
 }
 
-function insertIntoTbloccupant($conn, $profileId, $data) {
+function insertIntoTbloccupant($conn, $profileId, $data, $roleId) {
     $stmt = $conn->prepare("
-        INSERT INTO tbloccupant (Profile_ID, Status)
-        VALUES (:profileId, :status)
+        INSERT INTO tbloccupant (Profile_ID, Status, Role_ID)
+        VALUES (:profileId, :status, :roleId)
     ");
     $stmt->bindParam(':profileId', $profileId);
     $stmt->bindParam(':status', $data['status']);
+    $stmt->bindParam(':roleId', $roleId); // Bind Role_ID
     $stmt->execute();
     return $conn->lastInsertId();
 }
